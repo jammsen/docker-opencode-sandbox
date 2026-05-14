@@ -19,13 +19,29 @@
           }
         }
       }
+    },
+    "vllm-side": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM (Qwen3-14B local)",
+      "options": {
+        "baseURL": "http://10.0.0.13:8001/v1"
+      },
+      "models": {
+        "qwen3-14b": {
+          "name": "Qwen3 14B AWQ",
+          "limit": {
+            "context": 16384,
+            "output": 4096
+          }
+        }
+      }
     }
   },
   "model": "vllm/qwen3.6-35b",
-  "small_model": "vllm/qwen3.6-35b",
+  "small_model": "vllm-side/qwen3-14b",
   "agent": {
     "build": {
-      "prompt": "You must maintain a file called WORKLOG.md in the current working directory at all times.\n\nRules:\n- Before starting any task, check if WORKLOG.md exists and read it to understand prior context.\n- After completing any task or subtask, immediately update WORKLOG.md.\n- WORKLOG.md must always contain:\n  1. ## Project Overview — what this project is and its goals\n  2. ## Completed — bulleted list of finished tasks with brief descriptions\n  3. ## In Progress — what is currently being worked on\n  4. ## Next Steps — what still needs to be done\n  5. ## Decisions — important technical decisions made and why\n  6. ## File Map — key files and what they do\n- When approaching context limits, write a detailed summary of current state to WORKLOG.md before the session ends.\n- At the start of every new session, always read WORKLOG.md first before doing anything else.\n\nWhen looking up documentation, packages or external information, always use the websearch tool first. Only use webfetch if you already have a confirmed direct URL to fetch a specific file.",
+      "prompt": "You must maintain a file called WORKLOG.md in the current working directory at all times.\\n\\nRules:\\n- Before starting any task, check if WORKLOG.md exists and read it to understand prior context.\\n- Aft>",
       "permission": {
         "webfetch": "ask",
         "websearch": "allow"
