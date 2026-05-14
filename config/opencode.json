@@ -11,8 +11,11 @@
         "qwen3.6-35b": {
           "name": "Qwen3.6 35B A3B",
           "limit": {
-            "context": 65536,
+            "context": 131072,
             "output": 8192
+          },
+          "options": {
+            "preserve_thinking": true
           }
         }
       }
