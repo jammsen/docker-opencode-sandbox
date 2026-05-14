@@ -38,9 +38,12 @@ opencode-sandbox/
 
 ***
 
-## Build & Run
+## Get, Build & Run
 
 ```bash
+# Get the code
+git clone git@github.com:jammsen/docker-opencode-sandbox.git
+
 # Build the image (takes ~2-3 minutes on first run)
 docker compose build
 
