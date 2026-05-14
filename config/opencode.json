@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "vllm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM (Gemma4 local)",
+      "options": {
+        "baseURL": "http://10.0.0.13:8000/v1"
+      },
+      "models": {
+        "gemma4-26b-a4b": {
+          "name": "Gemma 4 26B MoE",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        }
+      }
+    }
+  },
+  "model": "vllm/gemma4-26b-a4b",
+  "small_model": "vllm/gemma4-26b-a4b"
+}

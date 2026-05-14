@@ -1,0 +1,24 @@
+services:
+  opencode:
+    build: .
+    container_name: opencode-sandbox
+    user: "1000:1000"                    # enforce non-root
+    stdin_open: true
+    tty: true
+    read_only: false                     # opencode writes session state
+    security_opt:
+      - no-new-privileges:true           # prevent privilege escalation
+    cap_drop:
+      - ALL                              # drop all Linux capabilities
+    volumes:
+      # Config files (read-only mounts)
+      - ./config/opencode.json:/home/opencode/.config/opencode/opencode.json:ro
+      - ./config/auth.json:/home/opencode/.local/share/opencode/auth.json:ro
+      # Your project workspace (read-write so opencode can edit files)
+      - ./workspace:/home/opencode/workspace:rw
+    # No network_mode: host — use bridge so container is isolated
+    # but can still reach your vLLM server via host IP
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - HOME=/home/opencode
