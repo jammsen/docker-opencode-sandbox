@@ -41,7 +41,7 @@
   "small_model": "vllm-side/qwen3-14b",
   "agent": {
     "build": {
-      "prompt": "You must maintain a file called WORKLOG.md in the current working directory at all times.\\n\\nRules:\\n- Before starting any task, check if WORKLOG.md exists and read it to understand prior context.\\n- Aft>",
+      "prompt": "You must maintain a file called WORKLOG.md in the current working directory at all times.\\n\\nRules:\\n- Before starting any task, check if WORKLOG.md exists and read it to understand prior context.\\n- After completing EACH task, immediately update WORKLOG.md with: what was done (specific files changed, exact lines modified), what was found (exact issues, not vague summaries), and what still needs doing with current date/time. Do NOT proceed to the next task until WORKLOG.md has been updated.\\n- If WORKLOG.md does not exist, create it before doing anything else.",
       "permission": {
         "webfetch": "ask",
         "websearch": "allow"
