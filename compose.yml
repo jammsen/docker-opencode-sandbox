@@ -16,6 +16,7 @@ services:
       - ./config/auth.json:/home/opencode/.local/share/opencode/auth.json:ro
       # Your project workspace (read-write so opencode can edit files)
       - ./workspace:/home/opencode/workspace:rw
+      - ./data:/home/opencode/.local/share/opencode
     # No network_mode: host — use bridge so container is isolated
     # but can still reach your vLLM server via host IP
     extra_hosts:

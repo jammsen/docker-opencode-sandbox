@@ -19,5 +19,14 @@
     }
   },
   "model": "vllm/gemma4-26b-a4b",
-  "small_model": "vllm/gemma4-26b-a4b"
+  "small_model": "vllm/gemma4-26b-a4b",
+  "agent": {
+    "build": {
+      "prompt": "When looking up documentation, packages, libraries or any external information, always use the websearch tool first. Only use webfetch if you already have a confirmed direct URL to fetch a specific file or page.",
+      "permission": {
+        "webfetch": "ask",
+        "websearch": "allow"
+      }
+    }
+  }
 }

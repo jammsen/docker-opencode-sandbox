@@ -2,11 +2,14 @@ FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Add here whatever dev-tools you need
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     git \
     openssh-client \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Ubuntu 26.04 ships with a default 'ubuntu' user at 1000:1000 — reuse it
