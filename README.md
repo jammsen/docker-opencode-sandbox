@@ -49,6 +49,9 @@ docker compose build
 
 # Launch OpenCode interactively
 docker compose run --rm opencode
+
+# Or as a oneliner
+docker compose build && docker compose run --rm opencode
 ```
 
 On first launch OpenCode opens the TUI. Press `/` to open the command palette.
