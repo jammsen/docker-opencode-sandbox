@@ -1,0 +1,7 @@
+data/
+!data/.gitkeep
+
+workspace
+!workspace/.gitkeep
+
+.DS_Store
