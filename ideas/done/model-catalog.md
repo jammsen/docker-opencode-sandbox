@@ -42,7 +42,7 @@ MODEL_URL / MODEL_ID / MODEL_NAME / MODEL_CONTEXT / MODEL_MAX_TOKENS / MODEL_VIS
 VISION_MODEL_URL / _ID / _NAME / _CONTEXT / _MAX_TOKENS                               = eyes
 ```
 
-That was the right first step (`ideas/dynamic-models.md`), but it has two practical problems:
+That was the right first step (`ideas/archive/dynamic-models.md`), but it has two practical problems:
 
 1. **The knobs for one model are split across 5-6 loose variables** and nothing ties them
    together. Swapping the Spark today left `MODEL_URL` pointing at the new box while `MODEL_ID`
@@ -179,7 +179,7 @@ the warning ever fires for real.
    Dockerfile `pyyaml`; drop hardcoded fallbacks from `x-model-env` (render fails loudly instead)
 4. `scripts/model-config.py` (wizard) + `scripts/model-config.sh` (wrapper) + compose service
    `model-config` (profile `config`)
-5. `.env.example` model block → pointer to the wizard; README section; `ideas/dynamic-models.md`
+5. `.env.example` model block → pointer to the wizard; README section; `ideas/archive/dynamic-models.md`
    "superseded" note
 6. live test: 3 servers configured (2 real + 1 fake) → `compose up` → litellm `/v1/models` lists
    all aliases, `brain`/`vision` resolve, opencode+omp pickers show all, Claude `/model qwen3.6-9b`
@@ -267,7 +267,7 @@ With the catalog those defaults live in ONE reviewed file with names attached.
 - `compose.yml`: `env_file: [.env, .env.models]` (or keep `x-model-env` but drop hardcoded
   fallbacks and let render fail loudly), comment header pointing to the catalog
 - `.env.example`: model block → `BRAIN=` / `VISION=` two-liner
-- `README.md` "model configuration" section, `ideas/dynamic-models.md` "superseded by" note
+- `README.md` "model configuration" section, `ideas/archive/dynamic-models.md` "superseded by" note
 - `includes/model.sh:setup_model_env` unchanged (its `:?` guards become the safety net)
 - optional: `tests/test-render-model-env.sh` (unknown key, defaults, vision==brain, probe)
 

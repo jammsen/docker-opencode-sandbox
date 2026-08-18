@@ -122,14 +122,14 @@ Touches no gateway internals, so a LiteLLM upgrade can't break it, and it is gat
 **Not yet wired** into `compose.yml` / `includes/services.sh` — it would run alongside the shim
 with `MODEL_URL` pointed at it.
 
-## Fix B: patch Bifrost (`ideas/bifrost-reasoning-item.patch`)
+## Fix B: patch Bifrost (`ideas/archive/bifrost-reasoning-item.patch`)
 
 Bifrost **is** patchable — clone, patch, `transports/Dockerfile.local` multistage build (~6 min),
 exactly the wetty/harness-proxy pattern. An earlier claim that it "can't be patched because it's a
 compiled Go binary" was wrong: that is only true of the *shipped image*.
 
 **This needs no fork.** Same shape as `wetty@3.1.0` in our Dockerfile: a multistage stage clones a
-**pinned commit SHA**, applies `bifrost-reasoning-item.patch` on the fly, builds, and the final
+**pinned commit SHA**, applies `ideas/archive/bifrost-reasoning-item.patch` on the fly, builds, and the final
 stage copies the binary out. No divergent history, no rebasing, no repo to own — and when
 [#5286](https://github.com/maximhq/bifrost/pull/5286) lands upstream you delete the patch file and
 bump the SHA. Failure mode is the familiar one: the patch stops applying on a SHA bump, exactly
@@ -230,7 +230,7 @@ measured above:
 - Cost is decoupled from either gateway's release cadence — the normalizer touches no gateway file,
   so neither repo's churn can break it.
 - Fully reversible with zero wasted work: if it disappoints, **Option 2 (patched Bifrost) is
-  staged** — `ideas/bifrost-reasoning-item.patch` already exists and applies cleanly — and the
+  staged** — `ideas/archive/bifrost-reasoning-item.patch` already exists and applies cleanly — and the
   normalizer is gateway-agnostic, so under a patched Bifrost it simply stops being load-bearing
   rather than being thrown away.
 - A clean transport is a **prerequisite for evaluating the model at all**: a corrupted or aborted

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Needle-in-haystack eval over 10 realistic coding-agent payloads (20k-90k tokens), fresh seeded
 # payload+needle per run — 200 independent data points at RUNS=20. Design + verdict: issue #11 /
-# ideas/headroom-spike-results.md. Env: RUNS (20), MODEL (brain), SCENARIOS (all), OUT (results file).
+# ideas/done/headroom-spike-results.md. Env: RUNS (20), MODEL (brain), SCENARIOS (all), OUT (results file).
 
 set -euo pipefail
 

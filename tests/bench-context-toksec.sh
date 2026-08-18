@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Measures TTFT + decode tok/s vs context size through the real chain (issue #11 baseline/A-B;
-# results: ideas/headroom-spike-results.md). Client-side SSE timing, filler re-randomized per run.
+# results: ideas/done/headroom-spike-results.md). Client-side SSE timing, filler re-randomized per run.
 # Run from host, stack up. Env: SIZES (token counts), RUNS (2), MODEL (brain).
 
 set -euo pipefail

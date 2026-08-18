@@ -1,4 +1,4 @@
-> **Superseded (2026-08-18)** by the model catalog + wizard — `ideas/model-catalog-configurator.md`.
+> **Superseded (2026-08-18)** by the model catalog + wizard — `ideas/done/model-catalog.md`.
 > The `MODEL_*` env contract described below no longer exists; models live in `config/models/models.yml`.
 
 # Feature: Dynamic model configuration from compose.yml (feat/dynamic-models)
@@ -59,7 +59,7 @@ VISION_MODEL_URL / _ID / _NAME / _CONTEXT / _MAX_TOKENS               = the eyes
 Historical note: `harness-proxy/` (a Rust litellm+shim replacement) was removed on the
 `feat/bifrost-replacement-test` branch after evaluation — it never triggered reasoning upstream,
 so it produced no thinking blocks. The code remains in git history. See
-`ideas/deepseek-thinking-block-bug.md` for why it was dropped and what replaced the gateway fix
+`ideas/done/deepseek-thinking-block-bug.md` for why it was dropped and what replaced the gateway fix
 (the `reasoning-normalizer` service).
 
 ## What's on the branch, file by file
@@ -76,7 +76,7 @@ so it produced no thinking blocks. The code remains in git history. See
 | `tests/test-claude-shim.js` (new) | 16-check test of hoisting + routing against a stub upstream, run at image build |
 | `Dockerfile` | +`gettext-base` (envsubst) |
 | `README.md` | "Configuring your models" section rewritten around `.env`, dual-model docs, stale hand-edit instructions removed |
-| `ideas/dynamic-models.md` (new) | this document |
+| `ideas/archive/dynamic-models.md` (new) | this document |
 
 Validated before review: `docker compose config` passes with defaults and
 with dual-model overrides; templates render to valid JSON/YAML for both the

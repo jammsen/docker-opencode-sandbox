@@ -3,7 +3,7 @@
 #
 # Manages ~/.config/models/models.yml (mounted rw from ./config/models): servers, the models you
 # picked from each, and the two roles (brain / vision). Every other catalog model stays selectable
-# in the tools. Design + flow: ideas/model-catalog-configurator.md.
+# in the tools. Design + flow: ideas/done/model-catalog.md.
 #
 #   model-config            interactive menu
 #   model-config status     one line + exit 0 (configured) / 1 (not configured) — used by agent-session.sh

@@ -2,7 +2,7 @@
 # resolves aliases (brain/vision/opus/sonnet/haiku, or any catalog model id) against
 # config/models/models.yml and forwards to the right server. That is why adding servers/models or
 # changing roles in the model-config wizard needs no litellm restart. Details:
-# ideas/model-catalog-configurator.md. hosted_vllm/ keeps the OpenAI-compatible translation LiteLLM
+# ideas/done/model-catalog.md. hosted_vllm/ keeps the OpenAI-compatible translation LiteLLM
 # uses for vLLM (chat/completions, images as image_url). Nothing calls litellm's own /v1/models and
 # check_provider_endpoint stays off, so v1.92.0's slow wildcard expansion there does not apply.
 model_list:

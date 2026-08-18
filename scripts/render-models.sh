@@ -9,7 +9,7 @@
 #   ~/.omp/agent/models.yml              template + one provider per server, all its models
 #   ~/.omp/agent/config.yml              template + modelRoles/context from the brain
 # Claude Code needs nothing rendered: its settings use the fixed aliases (opus/sonnet/haiku/fable)
-# that the normalizer resolves. Design: ideas/model-catalog-configurator.md.
+# that the normalizer resolves. Design: ideas/done/model-catalog.md.
 set -euo pipefail
 
 APP_HOME="${APP_HOME:-/home/agent}"

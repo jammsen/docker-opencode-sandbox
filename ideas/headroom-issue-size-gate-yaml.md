@@ -1,6 +1,6 @@
 # Upstream issue draft — headroomlabs-ai/headroom (NOT filed yet, 2026-08-18)
 
-Context and measurements: `ideas/headroom-spike-results.md` ("2026-08-18 re-check").
+Context and measurements: `ideas/done/headroom-spike-results.md` ("2026-08-18 re-check").
 File manually / on request only.
 
 ---

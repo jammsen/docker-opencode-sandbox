@@ -1,7 +1,7 @@
 # Models are NOT configured in compose/.env: the catalog config/models/models.yml (servers, picked
 # models, brain/vision roles) is managed by the model-config wizard in the browser session menu and
 # read live by the sandbox tools and the reasoning-normalizer (which routes every alias litellm hands
-# it). See ideas/model-catalog-configurator.md. MODEL_URL below is only the legacy fallback for a
+# it). See ideas/done/model-catalog.md. MODEL_URL below is only the legacy fallback for a
 # normalizer running without a catalog.
 
 services:
@@ -112,11 +112,11 @@ services:
 
   # reasoning-normalizer — (1) splits DeepSeek's fused reasoning+content delta that makes Claude Code
   # abort with "Content block is not a thinking block"; byte-for-byte no-op for non-fusing models
-  # (e.g. Qwen). Full story: ideas/deepseek-thinking-block-bug.md. (2) model ROUTER: resolves the
+  # (e.g. Qwen). Full story: ideas/done/deepseek-thinking-block-bug.md. (2) model ROUTER: resolves the
   # alias litellm hands it (brain/vision/opus/sonnet/haiku or any catalog model) against
   # config/models/models.json — rendered from models.yml by the model-config wizard in the sandbox —
   # and forwards to that model's server. Re-reads the file on change, so catalog edits need no
-  # restart of anything. Details: ideas/model-catalog-configurator.md.
+  # restart of anything. Details: ideas/done/model-catalog.md.
   reasoning-normalizer:
     image: node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
     container_name: agentic-reasoning-normalizer
@@ -144,7 +144,7 @@ services:
     mem_limit: 512m                               # router parses+re-serializes request bodies; a 50 MB image turn needs a few copies
 
   # headroom — OPTIONAL context-compression sidecar on the brain path (issue #11), off by default;
-  # enable via .env.example. Rationale, config trade-offs and gates: ideas/headroom-spike-results.md.
+  # enable via .env.example. Rationale, config trade-offs and gates: ideas/done/headroom-spike-results.md.
   headroom:
     build:
       context: ./headroom
@@ -168,7 +168,7 @@ services:
       # kubectl YAML dump into 13 tokens (0/20 needles, mislabelled router:config). Off = passthrough.
       HEADROOM_KOMPRESS_MAX_TOKENS: "0"
     # Every flag is load-bearing and --intercept-tool-results must stay OFF (it deletes code
-    # bodies); rationale + measurements in ideas/headroom-spike-results.md.
+    # bodies); rationale + measurements in ideas/done/headroom-spike-results.md.
     command: ["headroom", "proxy", "--host", "0.0.0.0", "--port", "8787",
               "--no-rate-limit", "--no-cache", "--no-ccr", "--stateless"]
     # No published ports — only litellm reaches it, over the internal docker network.

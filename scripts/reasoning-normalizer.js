@@ -12,12 +12,12 @@
 //   Splitting that chunk in two (reasoning-only, then content-only) makes deepseek look like
 //   qwen3.6-35b, which never bundles the two and which every gateway already handles correctly.
 //   Measured: 0/20 failures vs 3-6/10 without, with thinking still intact. See
-//   ideas/deepseek-thinking-block-bug.md.
+//   ideas/done/deepseek-thinking-block-bug.md.
 //
 //   Everything else — non-SSE responses, other paths, all requests — is proxied verbatim.
 //
 // Second job — model ROUTER for the catalog (config/models/models.yml, see
-//   ideas/model-catalog-configurator.md): LiteLLM sends every request here with the alias the tool
+//   ideas/done/model-catalog.md): LiteLLM sends every request here with the alias the tool
 //   asked for; we resolve it against models.json (rendered from the yaml by the sandbox) to a real
 //   model id + server URL, rewrite `model`, and forward. This is what lets the wizard change
 //   servers/roles without restarting anything: the file is re-read whenever its mtime changes.

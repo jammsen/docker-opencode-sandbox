@@ -73,7 +73,7 @@ def gen_code_needle():
 
 def gen_text_needle():
     # ~94k tokens of plain log text, one error outlier. Probes the router:search/code_aware
-    # misroute that deleted 94k -> 99 tokens in the spike (ideas/headroom-spike-results.md).
+    # misroute that deleted 94k -> 99 tokens in the spike (ideas/done/headroom-spike-results.md).
     rng = random.Random(23)
     services = ["api", "auth", "billing", "ingest", "scheduler", "webhook"]
     lines = []; approx = 0
