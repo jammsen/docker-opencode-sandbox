@@ -1,25 +1,30 @@
-data/*
-!data/.gitkeep
-test-data/*
-!data/opencode/
-!data/claude/
-data/opencode/*
-!data/opencode/.gitkeep
-data/claude/*
-!data/claude/.gitkeep
+sandbox-client/data/*
+!sandbox-client/data/.gitkeep
+sandbox-client/test-data/*
+!sandbox-client/data/opencode/
+!sandbox-client/data/claude/
+sandbox-client/data/opencode/*
+!sandbox-client/data/opencode/.gitkeep
+sandbox-client/data/claude/*
+!sandbox-client/data/claude/.gitkeep
 
-workspace/*
-!workspace/.gitkeep
-!workspace/.mcp.json
-!workspace/uploads/
-workspace/uploads/*
-!workspace/uploads/.gitkeep
+sandbox-client/workspace/*
+!sandbox-client/workspace/.gitkeep
+!sandbox-client/workspace/.mcp.json
+!sandbox-client/workspace/uploads/
+sandbox-client/workspace/uploads/*
+!sandbox-client/workspace/uploads/.gitkeep
 
 .DS_Store
 # Local model/env configuration (copy of .env.example)
 .env
+sandbox-client/.env
+server/.env
 
 # Local model catalog (managed by the model-config wizard; start from models.example.yml)
-config/models/models.yml
-config/models/*.bak-*
-config/models/models.json
+sandbox-client/config/models/models.yml
+sandbox-client/config/models/*.bak-*
+sandbox-client/config/models/models.json
+server/config/litellm-config.yaml
+server/config/models.json
+server/config/models.json.bak-*

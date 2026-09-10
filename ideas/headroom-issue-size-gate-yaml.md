@@ -38,5 +38,5 @@ the same hand-off (132k → 231 tokens) are no longer compressed.
 2. the no-savings fallback should honor `--compressor` / `HEADROOM_COMPRESSORS`;
 3. label the applied transform by the compressor that actually produced the output.
 
-Payload generator available on request (`tests/eval-headroom-coding-needles.py`, scenario
+Payload generator available on request (`tests/integration/eval-headroom-coding-needles.py`, scenario
 `k8s-config`).

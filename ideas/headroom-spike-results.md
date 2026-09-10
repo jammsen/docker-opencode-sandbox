@@ -10,10 +10,10 @@ shrinking bloated tool outputs, not token cost (self-hosted).
 - `headroom/Dockerfile` — rules-only build (`headroom-ai[proxy]==0.32.0`, no Kompress ML, no ONNX)
 - compose service `headroom` behind profile `headroom`, off by default; enable with
   `COMPOSE_PROFILES=headroom LITELLM_BRAIN_URL=http://agentic-headroom:8787/v1 docker compose up -d`
-- `tests/test-headroom-interactions-live.sh` — 3 scenarios x N runs: json-needle (fact in big JSON
+- `tests/integration/test-headroom-interactions-live.sh` — 3 scenarios x N runs: json-needle (fact in big JSON
   survives compression), code-needle (magic constant in big code blob survives), stream-hygiene
   (delta/block pairing + no injected `headroom_*` tool). Reports input_tokens per run.
-- `tests/bench-context-toksec.sh` — TTFT + decode tok/s vs context size through the real chain.
+- `tests/integration/bench-context-toksec.sh` — TTFT + decode tok/s vs context size through the real chain.
 
 ## Config that passed all gates (15/15 interactions, 20/20 thinking-path)
 
@@ -57,10 +57,10 @@ Recommendation: keep the profile opt-in and OFF by default (as shipped). The tex
 makes it genuinely attractive for retrieval-heavy big-log sessions; the unvalidated aggregate-task
 quality keeps it from default-on. Revisit if/when (a) a session is MCP/JSON-heavy, (b) an
 aggregate-needle test validates summary quality, or (c) upstream ships a safe non-ML prose
-compressor. `tests/test-headroom-interactions-live.sh SCENARIOS=text-needle` covers the retrieval
+compressor. `tests/integration/test-headroom-interactions-live.sh SCENARIOS=text-needle` covers the retrieval
 case (slow, opt-in).
 
-## 200-run coding-needle eval (2026-07-18, `tests/eval-headroom-coding-needles.sh`)
+## 200-run coding-needle eval (2026-07-18, `tests/integration/eval-headroom-coding-needles.sh`)
 
 10 realistic agent payloads x 20 runs, fresh seeded payload+needle every run, baseline-proven
 solvable 10/10 first. **Total 174/200 (87%)** — but failures are structural, not random:
@@ -141,7 +141,7 @@ destructive; ask: exempt CONFIG (and ideally everything not LOG/TEXT) from the g
 
 Other gates, same day: thinking-path live test 20/20 clean through headroom; the 5 eval misses
 re-run x2 with identical inputs -> 9/10 pass (sampling flakiness, not compression). The
-interactions gate (`tests/test-headroom-interactions-live.sh`) reports 8/15 FAIL with headroom and
+interactions gate (`tests/integration/test-headroom-interactions-live.sh`) reports 8/15 FAIL with headroom and
 **5/15 FAIL without it** (control): every failure is `thinking=False` with the needle found and the
 stream clean — the new `deepseek-v4-flash-0731` build answers trivial questions in ~4 tokens with
 no thinking block. Its `has_thinking` assertion was calibrated on the old build; JSON needle still

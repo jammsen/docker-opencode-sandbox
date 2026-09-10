@@ -1,0 +1,158 @@
+# Server stack: litellm + reasoning-normalizer + searxng + valkey (+ optional headroom).
+# Runs independently of any client — point a client's LITELLM_UPSTREAM / SEARXNG_URL at this
+# stack's litellm:4000 / searxng:8080 over whatever network reaches it.
+#
+# This server owns and transparently reports the REAL models it serves — config/models.json is a
+# hand-maintained catalog of every server/node and model actually plugged into your hardware
+# (copy config/models.example.json to start). GET <this-host>:4000/v1/models reports those real
+# ids honestly, no wildcard placeholder — see catalog-render below.
+#
+# What this server does NOT know: roles (brain/vision), aliases, or per-user preference. "Which of
+# my real models should be my default" is a client-side decision (see ../client/ and ../native-client/)
+# — a client resolves its own alias/role choice to one of the real ids this server reports, then
+# sends that real id here. An unresolvable/misconfigured model id 404s — no fallback or sync
+# machinery is provided here on purpose.
+
+services:
+  # catalog-render — turns config/models.json into litellm's real model_list (see
+  # scripts/render-litellm-config.sh). A one-shot, not a long-running service: run it explicitly
+  # with `docker compose run --rm catalog-render` (this project's model-config.sh does this for
+  # you) whenever config/models.json changes, then restart litellm to pick up the new config. It's
+  # NOT wired into litellm's depends_on and sits behind the "render" profile specifically so a
+  # plain `docker compose up -d` never starts it — there is no `--rm`-for-services equivalent in
+  # the compose spec's `up`, so a service that ran via `up` would just sit there Exited forever in
+  # `docker ps -a`; `run --rm` is the actual way to get one-shot-and-gone behaviour.
+  # Plain debian:stable-slim + jq/curl (installed at start, no custom image to build/maintain) —
+  # POSIX sh only.
+  catalog-render:
+    image: debian:stable-slim@sha256:04634311a8d5fc442b6eb06d792293c4f3e2268652ca7634e00ce8ef5cc0a28a  # as of 2026-09-10
+    container_name: agentic-catalog-render
+    profiles: ["render"]
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+    volumes:
+      - ./config/models.json:/config/models.json:ro
+      - ./config:/out:rw
+      - ./scripts/render-litellm-config.sh:/render-litellm-config.sh:ro
+    command: ["sh", "-c", "apt-get update -qq && apt-get install -y -qq --no-install-recommends jq curl >/dev/null && sh /render-litellm-config.sh"]
+
+  searxng:
+    image: docker.io/searxng/searxng:2026.6.26-f8ffbf36f
+    container_name: agentic-searxng
+    restart: unless-stopped
+    volumes:
+      - ./config/searxng:/etc/searxng:ro
+    environment:
+      - SEARXNG_BASE_URL=http://searxng:8080/
+    depends_on:
+      - valkey
+    ports:
+      - "8080:8080/tcp"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+
+  valkey:
+    image: docker.io/valkey/valkey:9.1.0-trixie
+    container_name: agentic-valkey
+    command: valkey-server --save 30 1 --loglevel warning
+    restart: unless-stopped
+    volumes:
+      - valkey-data:/data
+
+  # reasoning-normalizer — two jobs. (1) splits DeepSeek-style fused reasoning+content SSE deltas
+  # that make Claude Code abort with "Content block is not a thinking block"; byte-for-byte no-op
+  # for non-fusing models. Full story: ../ideas/deepseek-thinking-block-bug.md. (2) catalog ROUTER:
+  # resolves the real model id litellm hands it (already a real id — see header, no aliases reach
+  # here) against config/models.json to the right server/node, so one server can genuinely serve
+  # several models across several boxes through a single litellm endpoint. Re-reads the file on
+  # change, so editing models.json needs no restart of anything.
+  reasoning-normalizer:
+    image: node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    container_name: agentic-reasoning-normalizer
+    environment:
+      MODELS_FILE: /config/models.json                       # the real catalog; missing file = legacy single-VLLM_UPSTREAM fallback
+      VLLM_UPSTREAM: ${VLLM_UPSTREAM:-http://127.0.0.1:8000}  # legacy fallback only, unused once the catalog above is present
+      NORMALIZER_PORT: "4002"
+      UPSTREAM_TIMEOUT_MS: "3600000"                          # 60m idle read timeout — matches litellm's request_timeout
+    extra_hosts:
+      - "host.docker.internal:host-gateway"                   # covers a catalog server pointing at a host-run vLLM
+    volumes:
+      - ./scripts/reasoning-normalizer.js:/reasoning-normalizer.js:ro
+      - ./config/models.json:/config/models.json:ro           # written by you (hand-edit); read here
+    command: ["node", "/reasoning-normalizer.js"]
+    # No published ports — only litellm reaches it, over the internal docker network.
+    init: true
+    restart: unless-stopped
+    read_only: true
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 64
+    mem_limit: 512m
+
+  # headroom — OPTIONAL context-compression sidecar on the brain path (issue #11), off by default;
+  # enable via .env.example. Rationale, config trade-offs and gates: ../ideas/headroom-spike-results.md.
+  headroom:
+    build:
+      context: ./headroom
+    image: agentic-headroom
+    container_name: agentic-headroom
+    profiles: ["headroom"]
+    depends_on:
+      - reasoning-normalizer
+    environment:
+      OPENAI_TARGET_API_URL: http://agentic-reasoning-normalizer:4002
+      HEADROOM_NO_CCR: "1"
+      HEADROOM_DISABLE_KOMPRESS: "1"
+      HEADROOM_STATELESS: "true"
+      HEADROOM_UPDATE_CHECK: "off"
+      HEADROOM_TELEMETRY: "off"
+      HEADROOM_NO_SUBSCRIPTION_TRACKING: "1"
+      HEADROOM_REQUEST_TIMEOUT: "3600"
+      HEADROOM_MODE: token
+      HEADROOM_KOMPRESS_MAX_TOKENS: "0"
+    command: ["headroom", "proxy", "--host", "0.0.0.0", "--port", "8787",
+              "--no-rate-limit", "--no-cache", "--no-ccr", "--stateless"]
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/headroom/.cache
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: 1g
+
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.92.0        # latest stable as of 2026-07-16; post-attack (1.82.7/1.82.8 were the compromised PyPI versions)
+    # >=1.90.0 required: older /v1/messages streaming drops each block's first token (BerriAI/litellm#30014)
+    container_name: agentic-litellm
+    depends_on:
+      reasoning-normalizer:
+        condition: service_started
+    environment:
+      LITELLM_UPSTREAM: ${LITELLM_BRAIN_URL:-http://agentic-reasoning-normalizer:4002/v1}
+      LITELLM_LOG: INFO
+      LITELLM_FORCE_CHAT_COMPLETION: "true"
+      LITELLM_USE_RESPONSES_API: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "4000:4000/tcp"                           # published: clients reach this from another host
+    volumes:
+      - ./config/litellm-config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
+    restart: unless-stopped
+
+volumes:
+  valkey-data:
