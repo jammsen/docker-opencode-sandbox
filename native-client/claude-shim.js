@@ -251,6 +251,16 @@ function maybeRewrite(pathname, raw) {
   let body;
   try { body = JSON.parse(raw.toString('utf8')); } catch { return { buf: null, target: null }; }
   let changed = hoistToolResultImages(body);
+  // litellm (confirmed on v1.92.0, live against this exact litellm+hosted_vllm pair) converts an
+  // Anthropic `thinking.budget_tokens` above ~2k into the string "high" for a hosted_vllm target —
+  // its own reasoning-effort vocabulary tops out there. Some vLLM chat templates (Qwen3's
+  // `--reasoning-parser qwen3` included) use their own nonstandard scale instead
+  // (xhigh/medium/low, no "high" at all) and hard-reject "high" with a 400, breaking every Claude
+  // Code request above its lowest effort tier. Dropping `thinking` here isn't a downgrade: the
+  // backend still reasons, just at whatever `--default-chat-template-kwargs` set it to serve-side
+  // (xhigh for this model) — the effort dial just can't be lowered through this route right now.
+  if (body.thinking) { delete body.thinking; changed = true; }
+  if (body.reasoning_effort) { delete body.reasoning_effort; changed = true; }
   const requested = body.model; // reroute below may rename it — log the original class
   let note = '';
   const c = cfg();
