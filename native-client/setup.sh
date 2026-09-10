@@ -81,7 +81,7 @@ installed() { command -v "$1" >/dev/null; }
 
 claude_configured() {
     [[ -f "$CLAUDE_SETTINGS" ]] || return 1
-    [[ "$(jq -r '.env.ANTHROPIC_BASE_URL // ""' "$CLAUDE_SETTINGS" 2>/dev/null)" == "http://127.0.0.1:4001" ]] || return 1
+    [[ "$(jq -r '.env.ANTHROPIC_BASE_URL // ""' "$CLAUDE_SETTINGS" 2>/dev/null)" == "http://127.0.0.1:3999" ]] || return 1
     [[ -f "$CATALOG" ]]
 }
 claude_summary() {
@@ -465,7 +465,7 @@ EOF
         backup "$CLAUDE_SETTINGS"
         [[ -f "$CLAUDE_SETTINGS" ]] || echo '{}' > "$CLAUDE_SETTINGS"
         tmp="$(mktemp)"
-        jq '.env.ANTHROPIC_BASE_URL = "http://127.0.0.1:4001"
+        jq '.env.ANTHROPIC_BASE_URL = "http://127.0.0.1:3999"
           | .env.ANTHROPIC_API_KEY = "dummy"
           | .env.ANTHROPIC_DEFAULT_OPUS_MODEL = "opus"
           | .env.ANTHROPIC_DEFAULT_SONNET_MODEL = "sonnet"

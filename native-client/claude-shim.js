@@ -43,7 +43,7 @@ const http  = require('http');
 const https = require('https');
 const { URL } = require('url');
 
-const SHIM_PORT          = parseInt(process.env.CLAUDE_SHIM_PORT    || '4001',   10);
+const SHIM_PORT          = parseInt(process.env.CLAUDE_SHIM_PORT    || '3999',   10);
 const UPSTREAM_TIMEOUT_MS = parseInt(process.env.UPSTREAM_TIMEOUT_MS || '600000', 10); // 10 min — LLM inference is slow
 const UPSTREAM = new URL(process.env.LITELLM_UPSTREAM || (() => { throw new Error('LITELLM_UPSTREAM not set — run setup.sh first, or export it yourself'); })());
 

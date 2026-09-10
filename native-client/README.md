@@ -79,7 +79,7 @@ than overwriting blind, so re-running to switch servers or add another tool is s
 file is left alone):
 
 ```
-ANTHROPIC_BASE_URL=http://127.0.0.1:4001
+ANTHROPIC_BASE_URL=http://127.0.0.1:3999
 ANTHROPIC_DEFAULT_OPUS_MODEL=opus
 ANTHROPIC_DEFAULT_SONNET_MODEL=sonnet
 ANTHROPIC_DEFAULT_HAIKU_MODEL=haiku
