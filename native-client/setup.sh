@@ -19,6 +19,7 @@ CONFIG_DIR="${AGENTIC_NATIVE_CONFIG_DIR:-$HOME/.config/agentic-harness-native}"
 CATALOG="$CONFIG_DIR/models.json"
 ENVFILE="$CONFIG_DIR/env"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+CLAUDE_JSON="$HOME/.claude.json"
 OC_CONFIG="$HOME/.config/opencode/opencode.json"
 OMP_MODELS="$HOME/.omp/agent/models.yml"
 OMP_CONFIG="$HOME/.omp/agent/config.yml"
@@ -165,19 +166,28 @@ overview() {
 }
 
 # ---------------------------------------------------------------- install
+# Not every official installer actually adds itself to ~/.bashrc — Claude Code's (claude.ai/
+# install.sh) doesn't touch shell rc files at all, it just drops the binary under
+# $HOME/.local/bin and expects that directory to already be on PATH. On a fresh machine where
+# it isn't (e.g. a non-login shell that never sourced ~/.profile), `claude` then stays
+# unreachable in every new shell forever, silently. So don't trust the installer to have done
+# this — check ~/.bashrc ourselves and append an export line if the install dir isn't there yet.
+ensure_path_in_bashrc() {
+    local dir="$1" bashrc="$HOME/.bashrc"
+    grep -qF "$dir" "$bashrc" 2>/dev/null && return 0
+    { echo ""; echo "# added by native-client/setup.sh so tools installed there stay on PATH"; echo "export PATH=\"$dir:\$PATH\""; } >> "$bashrc"
+    ei "  (added $dir to PATH in $bashrc — new shells will have it from now on)"
+}
+
 install_tool() {
     local bin="$1" name="$2" cmd="$3"
     if installed "$bin"; then es "$name is already installed"; return 0; fi
     read -r -p "Install $name now? [y/N]: " ans
     [[ "${ans,,}" == "y" ]] || return 1
     eval "$cmd"
-    local path_before="$PATH"
     refresh_path_for "$bin"
     installed "$bin" || { ew "install ran, but '$bin' wasn't found in any known install location — check the installer's own output above"; return 1; }
-    if [[ "$PATH" != "$path_before" ]]; then
-        ei "  (added to PATH for this session only, so it shows up below right away — a new"
-        ei "   shell picks it up on its own via the line the installer added to your shell rc)"
-    fi
+    ensure_path_in_bashrc "$(dirname "$(command -v "$bin")")"
     es "$name installed"
 }
 
@@ -473,6 +483,19 @@ EOF
           | .env.ANTHROPIC_DEFAULT_FABLE_MODEL = "fable"' \
           "$CLAUDE_SETTINGS" > "$tmp" && mv "$tmp" "$CLAUDE_SETTINGS"
         echo "  merged env vars into $CLAUDE_SETTINGS (existing settings preserved)"
+        # Claude Code's own first-run wizard (theme pick, trust dialog, "is this API key OK?"
+        # prompt for the dummy key claude-shim expects) lives in ~/.claude.json, separate from
+        # settings.json above — same fields the sandbox pre-seeds
+        # (../sandbox-client/config/claude/claude.json) so a fresh install skips straight to use.
+        backup "$CLAUDE_JSON"
+        [[ -f "$CLAUDE_JSON" ]] || echo '{}' > "$CLAUDE_JSON"
+        tmp="$(mktemp)"
+        jq '.hasCompletedOnboarding = true
+          | .hasTrustDialogAccepted = true
+          | .theme = (.theme // "dark")
+          | .customApiKeyResponses.approved = ((.customApiKeyResponses.approved // []) + ["dummy"] | unique)' \
+          "$CLAUDE_JSON" > "$tmp" && mv "$tmp" "$CLAUDE_JSON"
+        echo "  merged onboarding/trust state into $CLAUDE_JSON (existing settings preserved)"
         if ! command -v node >/dev/null; then
             ew "  note: 'node' isn't on PATH — install Node.js before running ./start-claude-code-shim.sh"
         fi

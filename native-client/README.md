@@ -90,6 +90,11 @@ These are stable slot names `claude-shim` resolves against your catalog, not lit
 same convention the sandbox client uses (`../sandbox-client/config/claude/settings.json`), so `/model`
 inside Claude Code still works the same way.
 
+`setup.sh` also merges onboarding/trust state into `~/.claude.json` (`hasCompletedOnboarding`,
+`hasTrustDialogAccepted`, `theme`, and approving the `dummy` API key `claude-shim` expects) — same
+fields the sandbox pre-seeds (`../sandbox-client/config/claude/claude.json`) — so a fresh Claude
+Code install skips straight to a working session instead of stopping at its own first-run wizard.
+
 **OpenCode** and **OMP** need nothing kept running — `setup.sh` writes their provider config
 (`~/.config/opencode/opencode.json`'s `provider`/`model`, `~/.omp/agent/models.yml` +
 `config.yml`) pointing directly at the server, and you're done.
