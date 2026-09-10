@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "searxng": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-searxng@1.8.0"],
+      "env": {
+        "SEARXNG_URL": "__SEARXNG_URL__",
+        "SEARXNG_MAX_RESULTS": "10",
+        "SEARXNG_LITE_TOOLS": "true"
+      }
+    }
+  }
+}

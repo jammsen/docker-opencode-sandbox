@@ -1,0 +1,18 @@
+{
+  "_comment": "Server model catalog — the real, transparent list of what this server serves. Copy to models.json and edit to match your actual hardware; hand-editing is fine, no wizard needed server-side. servers.<name>.url = an OpenAI-compatible base URL (vLLM, llama.cpp, SGLang, ...); models.<id> = the exact id from GET <url>/models. Every model is routed through reasoning-normalizer (Job 1: fixes DeepSeek-style fused reasoning+content deltas, a no-op otherwise) regardless of which server/node it lives on. render-litellm-config.sh turns this into litellm's real model_list on every container start, so GET /v1/models reports these ids honestly instead of a wildcard placeholder.",
+  "servers": {
+    "spark-a": {
+      "url": "http://10.0.0.25:8888/v1",
+      "models": {
+        "qwen3.8-flash-next": {}
+      }
+    },
+    "spark-b": {
+      "url": "http://10.0.0.13:8000/v1",
+      "models": {
+        "deepseek-v4-flash-0731": {},
+        "qwen3.6-35b": {}
+      }
+    }
+  }
+}

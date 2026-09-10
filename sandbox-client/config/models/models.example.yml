@@ -1,0 +1,59 @@
+# Model catalog — the single source of truth for every tool in the sandbox.
+# Managed by the "Model configuration" entry in the browser session menu (scripts/model-config.sh);
+# hand-editing is fine too. Copy to models.yml to start from this example.
+#
+# RECOMMENDED default: add ONE server pointing at the same address you set LITELLM_UPSTREAM to
+# (your ../../server/). It transparently reports every real model it actually serves — even
+# across several nodes — via GET <url>/models, including the real context window: the wizard's
+# probe also checks the server's /model/info (see ../../server/scripts/render-litellm-config.sh),
+# which carries the metadata plain /v1/models can't (that endpoint is fixed by the OpenAI spec to
+# id/object/created/owned_by only, on any OpenAI-compatible server, not just this one's).
+#
+# Only add a server by its RAW vLLM/OpenAI address directly (skipping your own server entirely)
+# if you genuinely have network access to that box yourself — e.g. you're the server's operator
+# too. A normal client, reachable only via the server's published port, cannot reach a raw vLLM
+# node directly; pointing the wizard at one that isn't actually reachable from here will just fail
+# to probe.
+#
+# servers.<name>.url          OpenAI-compatible base URL (your server's LITELLM_UPSTREAM address,
+#                             a raw vLLM address you can personally reach, or see `anthropic:` below)
+# servers.<name>.anthropic    optional, default false. Set true only when `url` is itself another
+#                             full server stack (e.g. someone else's ../../server/, or a second one
+#                             of your own) rather than a raw vLLM/OpenAI endpoint — requests for its
+#                             models are sent there directly instead of through this client's own
+#                             configured server. See ../../README.md and ../../scripts/claude-shim.js.
+# servers.<name>.models.<id>   id = the exact id from GET <url>/models
+#   name            display name in tool pickers
+#   context         context window (auto-filled from your server's /model/info, or a raw vLLM's
+#                   /v1/models directly; typed in by hand only if a probe genuinely returns none)
+#   max_tokens      max completion tokens
+#   vision          can this model see images? (never reported by any endpoint — set it yourself)
+# (Every model behind your own server also passes through its reasoning-normalizer there, which
+#  fixes DeepSeek-style fused reasoning+content deltas and is a no-op otherwise — nothing to
+#  configure per model. A server marked anthropic: true handles that on its own end.)
+# roles: exactly one brain; vision is optional (must be a vision-capable model, may equal brain;
+# none = images are dropped with a note). Every other model in the catalog is still selectable
+# inside the tools (Claude Code /model, opencode, omp pickers).
+servers:
+  myserver:
+    url: http://10.0.0.5:4000/v1               # your server's LITELLM_UPSTREAM address
+    models:
+      qwen3.8-flash-next:
+        name: Qwen3.8 Flash Next
+        context: 262144                         # auto-filled from the server's /model/info
+        max_tokens: 16384
+        vision: false
+  # Only valid if you can personally reach this box (see note above):
+  # spark-vision:
+  #   url: http://10.0.0.13:8000/v1
+  #   models:
+  #     qwen3.6-35b: {name: "Qwen3.6 35B A3B", context: 131072, max_tokens: 16384, vision: true}
+  # A second, independently-run server (someone else's, or your own second one) reached directly
+  # instead of through myserver above:
+  # friend-server:
+  #   url: http://friend-host:4000/v1
+  #   anthropic: true
+  #   models:
+  #     llama-vision-70b: {name: "Friend's Llama Vision 70B", context: 131072, max_tokens: 8192, vision: true}
+roles:
+  brain: myserver/qwen3.8-flash-next

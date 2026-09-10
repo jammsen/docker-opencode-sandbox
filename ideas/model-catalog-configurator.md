@@ -3,6 +3,70 @@
 Status: IMPLEMENTED on `feat/model-catalog` (2026-08-18) — see "As built" right below. Plan v2 and the
 older phase-1 sketch further down are kept as the design record.
 
+**Update (2026-09-10), server/client split:** the repo split into `server/` (litellm +
+reasoning-normalizer + searxng) and `sandbox-client/` (the sandbox). This catalog and its alias/role
+resolution now live entirely client-side — the server never mounts or reads it, and always runs
+`reasoning-normalizer` in plain single-`VLLM_UPSTREAM` mode (no `MODELS_FILE`). Alias resolution
+that used to happen in `reasoning-normalizer.js` was ported into `sandbox-client/scripts/claude-shim.js`.
+A new per-server catalog field, `anthropic: true`, marks a server entry whose `url` is itself
+another full Anthropic-speaking gateway (someone else's `../server/`, or a second one of your own)
+rather than a raw vLLM endpoint — `claude-shim.js` dispatches requests for that server's models
+there directly instead of through this client's own configured server, which is what makes mixing
+genuinely different backends work without reimplementing Anthropic↔OpenAI translation in the
+client. See `sandbox-client/config/models/models.example.yml` and `sandbox-client/scripts/claude-shim.js`'s
+`resolveDispatch()`.
+
+**Correction (2026-09-10, same day):** the server going fully catalog-blind was wrong — it hid what
+models actually exist behind a litellm wildcard (`GET /v1/models` returned a literal `"*"`), which
+broke both a generic third-party client (Jan) and, on inspection, would have broken the wizard's
+own probe for anyone who can only reach the server's published litellm port rather than the raw
+vLLM box directly (the normal case under a real network-ACL trust model). `reasoning-normalizer`'s
+catalog/router job (Job 2) was restored server-side, backed by a NEW, separate, hand-maintained
+`server/config/models.json` (real servers/nodes/models, no roles) — see `server/README.md` and
+`server/scripts/render-litellm-config.sh`. This does **not** undo the point above: role/alias
+resolution (brain/vision, per-user preference) stays entirely client-side, unaffected. The two
+catalogs solve different problems — the server's says *what real models exist*, transparently; the
+client's says *which one is my brain*, personally — and don't need to share a file or a format.
+
+**Also added (2026-09-10):** `native-client/` — a third piece, a bash setup script (`setup.sh`) +
+the same `claude-shim.js` logic, for someone who already runs Claude Code natively and doesn't want
+to run the sandbox container just to reach a server. See `native-client/README.md`.
+
+**Fixed (2026-09-10, same day):** the correction above accepted, wrongly, that a client probing the
+server would lose context-window auto-fill — that "LiteLLM just can't provide it" was a real
+functional gap, not something to shrug off in docs. LiteLLM's plain `GET /v1/models` genuinely
+can't carry it (fixed by the OpenAI spec to id/object/created/owned_by), but its `GET /model/info`
+does, when the `model_list` entry carries `model_info`. Fixed both ends: `server/scripts/
+render-litellm-config.sh` now probes each model's own backend at render time and embeds
+`max_model_len`/`root` as `model_info`; `sandbox-client/scripts/model-config.sh`'s `probe_models()` now
+tries `/model/info` first, falling back to `/v1/models` for a raw vLLM box (which has no
+`/model/info` at all but already reports context directly). Verified live: both probe paths return
+identical `max_model_len` for the same real model.
+
+**Also added (2026-09-10):** `server/model-config.sh` — a server-side counterpart to the client's
+wizard, run directly on the server host (not containerized — the operator already has network
+access to probe real backends directly). Same add/edit/delete-server shape, but simpler: no roles,
+no aliases, no per-model vision/display-name questions, since the server has none of those
+concepts. Looks up context window itself via the same `probe_models()` pattern. On write, offers to
+`docker compose up -d --force-recreate catalog-render litellm` on the spot. This is the intended
+tool for reconfiguring the server's real hardware layout (e.g. one big model → four smaller ones
+across two nodes) without hand-editing `config/models.json` or forgetting to restart.
+
+**Corrected (2026-09-10, same day) — real freedom of choice, not silent funneling.** The earlier
+"anthropic: true dispatches directly, otherwise routed through LITELLM_UPSTREAM" design (the
+2026-09-10 "server/client split" note above) was wrong, and contradicted the original plan text
+("requests resolving to a user's own local model get forwarded straight there"). A plain
+(non-gateway) catalog entry was silently funneled through the client's configured server instead of
+actually being talked to — meaning adding a raw vLLM box directly didn't do what it looked like it
+did. Fixed: **every** resolved catalog entry is now dispatched to directly, at its own address, no
+exceptions. `anthropic: true` only changes HOW: raw bytes for a full gateway, or — new —
+`claude-shim.js` now translates Anthropic↔OpenAI itself (`anthropicToOpenAI()`,
+`openAIJsonToAnthropic()`, `streamOpenAIToAnthropic()`) for a plain OpenAI-compatible target,
+covering text, images, tool calls, thinking (accepting both `reasoning_content`, litellm's
+normalized name, and `reasoning`, raw vLLM's own native field — the two disagree and both occur in
+practice), and both streaming and non-streaming. Verified against 34 unit tests plus live requests
+to a real raw vLLM box (`10.0.0.13:8000`, bypassing the server entirely) for both response modes.
+
 ## As built (2026-08-18)
 
 - `config/models/models.yml` (gitignored) + `models.example.yml`; mounted rw into the sandbox at
@@ -299,3 +363,10 @@ Not started; phase 1 makes all of it possible without redoing anything.
   manager + `includes/*.sh` shape of the repo.
 - No auto-discovery of models from vLLM. `--probe` verifies the catalog; it doesn't invent
   entries (context/max_tokens/vision/fuses_reasoning are curated facts, not discoverable ones).
+
+**Extended (2026-09-10):** `native-client/setup.sh` now configures OpenCode and OMP as well as
+Claude Code, not just Claude Code. Since OpenCode/OMP already speak OpenAI natively, they're
+pointed straight at the server's own address — no `claude-shim` translation needed for them at
+all, that's Claude-Code-only (Anthropic-only wire format). Installs a tool via its official
+installer if missing, backs up any existing config (`<file>.bak-<timestamp>`) before merging in
+the provider/model settings — existing unrelated settings in each tool's config are preserved.

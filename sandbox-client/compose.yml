@@ -1,0 +1,83 @@
+# Client stack: the sandbox container (WeTTY browser terminal + claude/opencode/omp +
+# claude-shim.js + upload-server). No inference stack lives here — point LITELLM_UPSTREAM and
+# SEARXNG_URL at a running server (see ../server/), yours or someone else's.
+
+services:
+  sandbox:
+    build:
+      context: .
+      args:
+        PYTHON_VERSION: "3.13"                  # override here to change the Python version
+        APT_MIRROR: ${APT_MIRROR:-}             # optional apt mirror for faster builds, see .env.example
+    container_name: agentic-harness-sandbox
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      HOME: /home/agent
+      SHELL: /bin/bash
+      USER: agent
+      LANG: C.UTF-8                             # ensures TUI apps (opencode, omp) render Unicode box-drawing chars
+      LC_ALL: C.UTF-8
+      TOOLS: claude,opencode,omp                # order defines menu order and default (first = default)
+      DEFAULT_TOOL: ${DEFAULT_TOOL:-}           # pass-through from host shell; empty = show menu in browser
+      CLAUDE_CODE_NO_FLICKER: "1"               # prevents Claude Code from using alt-screen tricks that break scroll in WeTTY
+      LITELLM_UPSTREAM: ${LITELLM_UPSTREAM:?set to your server's litellm endpoint, e.g. http://10.0.0.5:4000}   # upstream for claude-shim.js (Claude image-rewrite proxy on 127.0.0.1:4001)
+      UPSTREAM_TIMEOUT_MS: "3600000"                  # claude-shim read timeout to litellm — 60m, matches the whole timeout chain
+      SEARXNG_URL: ${SEARXNG_URL:?set to your server's searxng endpoint, e.g. http://10.0.0.5:8080}   # used by OMP's built-in web search (providers.webSearch=searxng) and mcp-searxng
+    init: true                                  # tini as PID 1 — reaps zombie child processes
+    restart: unless-stopped                     # auto-restart on failure or host reboot
+    read_only: false                            # opencode writes session state
+    security_opt:
+      - no-new-privileges:true                  # prevent privilege escalation
+    cap_drop:
+      - ALL                                     # drop all Linux capabilities
+    cap_add:
+      - CHOWN                                   # entrypoint: chown -R on /home/agent
+      - SETUID                                  # gosu + useradd/usermod
+      - SETGID                                  # gosu + groupadd/groupmod
+      - DAC_OVERRIDE                            # allows root to chown/access files it doesn't own
+    ports:
+      - "1111:1111/tcp"                         # wetty browser terminal — open https://<host>:1111
+      - "1112:1112/tcp"                         # image upload companion — open https://<host>:1112
+      - "3000:3000/tcp"                         # agent dev server port (Vite, Express, Django, Flask, etc.)
+    volumes:
+      # opencode config. opencode.json is a template — render-models fills provider/model from the
+      # model catalog into ~/.config/opencode/opencode.json (entrypoint + after each wizard write).
+      - ./config/opencode/opencode.json:/home/agent/.config/templates/opencode.json:ro
+      - ./config/opencode/AGENTS.md:/home/agent/.config/opencode/AGENTS.md:ro
+      - ./config/opencode/skills:/home/agent/.config/opencode/skills:ro
+      - ./config/opencode/commands:/home/agent/.config/opencode/commands:ro
+      - ./config/opencode/agents:/home/agent/.config/opencode/agents:ro
+      # OMP config. config.yml and models.yml are templates rendered from the model catalog by
+      # render-models into ~/.omp/agent/ (rendered copies live in the container layer;
+      # setupVersion persists across restarts, resets on recreate).
+      - ./config/omp/config.yml:/home/agent/.config/templates/omp-config.yml:ro
+      - ./config/omp/models.yml:/home/agent/.config/templates/omp-models.yml:ro
+      - ./config/omp/settings.json:/home/agent/.omp/agent/settings.json:rw
+      - ./config/omp/AGENTS.md:/home/agent/.omp/agent/AGENTS.md:ro
+      # mcp.json is a template — __SEARXNG_URL__ is substituted from $SEARXNG_URL at container
+      # start (render_mcp_config in includes/config.sh) rather than assuming co-location.
+      - ./config/omp/mcp.json:/home/agent/.config/templates/omp-mcp.json:ro
+      # Model catalog — owned entirely by this client (see ../server/compose.yml header). Read AND
+      # written by the model-config wizard inside the sandbox (session menu). models.yml is
+      # gitignored; models.example.yml is the seed.
+      - ./config/models:/home/agent/.config/models:rw
+      # Claude Code config (read-only sources; entrypoint syncs them into ~/.claude/ on start)
+      - ./config/claude/settings.json:/home/agent/.config/claude-settings.json:ro
+      - ./config/claude/CLAUDE.md:/home/agent/.config/claude-CLAUDE.md:ro
+      - ./config/claude/agents:/home/agent/.config/claude-agents:ro
+      - ./config/claude/claude.json:/home/agent/.config/claude.json:ro
+      # WeTTY xterm.js defaults (Dark+ palette). Served straight to the browser, so
+      # edits need only a page reload — no rebuild. Overrides the build-time font patch.
+      - ./config/wetty/xterm_defaults.js:/usr/local/lib/node_modules/wetty/build/client/xterm_config/xterm_defaults.js:ro
+      # Claude Code session state (transcripts, checkpoints, etc.)
+      - ./data/claude:/home/agent/.claude:rw
+      # Your project workspace (read-write so tools can edit files)
+      - ./workspace:/home/agent/workspace:rw
+      - ./data/opencode:/home/agent/.local/share/opencode
+      # NOT mounted directly to .local/share/opencode/auth.json — nesting a file mount inside
+      # an already-mounted directory breaks on Docker Desktop for Mac (virtiofs "mountpoint is
+      # outside of rootfs" error). Entrypoint symlinks it into place instead, keeping it live.
+      - ./config/opencode/auth.json:/home/agent/.config/opencode-auth.json:ro
+    # No network_mode: host — use bridge so container is isolated
+    # but can still reach your server via its network address (Twingate, VPN, plain LAN, ...)
