@@ -391,12 +391,12 @@ action_configure() {
     # "brain" / "vision" are Claude Code concepts only (claude-shim's image-reroute logic) —
     # OpenCode and OMP just get one model, no role concept at all, so don't ask a vision
     # question that would never be used for them.
-    local sel brain brain_vision_ans brain_vision vision=""
+    local sel brain brain_ctx brain_vision_ans brain_vision vision=""
     local brain_prompt="Which model is your brain (number, required): "
     $want_claude || brain_prompt="Which model do you want to use (number, required): "
     while true; do
         read -r -p "$brain_prompt" sel
-        [[ "$sel" =~ ^[0-9]+$ ]] && [[ "$sel" -ge 1 && "$sel" -le ${#ids[@]} ]] && { brain="${ids[$((sel-1))]}"; break; }
+        [[ "$sel" =~ ^[0-9]+$ ]] && [[ "$sel" -ge 1 && "$sel" -le ${#ids[@]} ]] && { brain="${ids[$((sel-1))]}"; brain_ctx="${ctxs[$((sel-1))]:-}"; break; }
         ew "enter a number from the list"
     done
     brain_vision=true
@@ -475,14 +475,26 @@ EOF
         backup "$CLAUDE_SETTINGS"
         [[ -f "$CLAUDE_SETTINGS" ]] || echo '{}' > "$CLAUDE_SETTINGS"
         tmp="$(mktemp)"
-        jq '.env.ANTHROPIC_BASE_URL = "http://127.0.0.1:3999"
+        # Claude Code validates model ids against its own built-in catalog to know each model's
+        # real context window; it doesn't know "opus"/"brain" etc. are just claude-shim aliases
+        # (resolved later, against the model catalog above), so it warns and falls back to
+        # assuming 200k for auto-compact. Tell it the brain's REAL window directly when the
+        # server reported one (the model-list probe above already asked for it) so auto-compact
+        # doesn't compact way too early on a model that actually has more headroom.
+        jq --arg ctx "${brain_ctx:-}" '.env.ANTHROPIC_BASE_URL = "http://127.0.0.1:3999"
           | .env.ANTHROPIC_API_KEY = "dummy"
           | .env.ANTHROPIC_DEFAULT_OPUS_MODEL = "opus"
           | .env.ANTHROPIC_DEFAULT_SONNET_MODEL = "sonnet"
           | .env.ANTHROPIC_DEFAULT_HAIKU_MODEL = "haiku"
-          | .env.ANTHROPIC_DEFAULT_FABLE_MODEL = "fable"' \
+          | .env.ANTHROPIC_DEFAULT_FABLE_MODEL = "fable"
+          | if ($ctx | test("^[0-9]+$")) then .env.CLAUDE_CODE_MAX_CONTEXT_TOKENS = $ctx else . end' \
           "$CLAUDE_SETTINGS" > "$tmp" && mv "$tmp" "$CLAUDE_SETTINGS"
         echo "  merged env vars into $CLAUDE_SETTINGS (existing settings preserved)"
+        if [[ -n "${brain_ctx:-}" ]]; then
+            echo "  set CLAUDE_CODE_MAX_CONTEXT_TOKENS=$brain_ctx (from the server's reported context length for '$brain')"
+        else
+            ew "  server didn't report a context length for '$brain' — CLAUDE_CODE_MAX_CONTEXT_TOKENS not set, Claude Code will assume 200k for auto-compact"
+        fi
         # Claude Code's own first-run wizard (theme pick, trust dialog, "is this API key OK?"
         # prompt for the dummy key claude-shim expects) lives in ~/.claude.json, separate from
         # settings.json above — same fields the sandbox pre-seeds
