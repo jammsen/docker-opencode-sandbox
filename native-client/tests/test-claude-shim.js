@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
-// test-claude-shim — exercises claude-shim.js end-to-end against a stub upstream.
+// test-claude-shim — exercises native-client/claude-shim.js end-to-end against a stub upstream.
+// Native-client copy of ../../sandbox-client/tests/test-claude-shim.js — same coverage, ported
+// here since native-client's shim got the same translation-layer port (2026-09-11).
 // Covers the tool_result image hoist and the dual-model vision routing
 // (MODEL_VISION=false → image-bearing requests rewritten to the `vision` model).
 //
@@ -10,10 +12,11 @@ const http = require('http');
 const { spawn } = require('child_process');
 const path = require('path');
 
-// In-repo the shim lives in ../scripts; the image build overrides with SHIM_PATH=/claude-shim.js.
-const SHIM = process.env.SHIM_PATH || path.join(__dirname, '..', 'scripts', 'claude-shim.js');
-const UPSTREAM_PORT = 4009;
-const SHIM_PORT = 4008;
+// native-client keeps the shim flat in its own root, not under scripts/.
+const SHIM = process.env.SHIM_PATH || path.join(__dirname, '..', 'claude-shim.js');
+// Distinct ports from sandbox-client/tests/test-claude-shim.js so both suites can run concurrently.
+const UPSTREAM_PORT = 4019;
+const SHIM_PORT = 4018;
 
 let lastBody = null, lastPath = null;
 const upstream = http.createServer((req, res) => {
@@ -196,7 +199,7 @@ function check(name, cond) {
   // Neither ever touches the default LITELLM_UPSTREAM once a catalog resolves them.
   const fs = require('fs');
   const os = require('os');
-  const SECOND_SERVER_PORT = 4010;
+  const SECOND_SERVER_PORT = 4020;
   let secondHits = 0, secondPath = null, secondModel = null;
   const secondServer = http.createServer((req, res) => {
     secondHits++; secondPath = req.url;
@@ -210,7 +213,7 @@ function check(name, cond) {
 
   // Plain (non-anthropic) target: speaks OpenAI chat/completions, not Anthropic — the shim must
   // translate both the outgoing request and the incoming response.
-  const PLAIN_SERVER_PORT = 4011;
+  const PLAIN_SERVER_PORT = 4021;
   let plainHits = 0, plainPath = null, plainReqBody = null;
   const plainServer = http.createServer((req, res) => {
     plainHits++; plainPath = req.url;

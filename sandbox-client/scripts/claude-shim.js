@@ -151,6 +151,21 @@ function imagePart(source) {
   return null;
 }
 
+// Claude Code's thinking.budget_tokens is a raw token count with no fixed scale. LiteLLM's own
+// /v1/messages translation maps any budget above ~2k to the single string "high" — but Qwen3's
+// chat template (and vLLM's --reasoning-parser qwen3) uses a totally different, coarser vocabulary
+// (xhigh/medium/low, no "high" tier at all) and hard-rejects "high" with a 400. Confirmed live
+// 2026-09-11: litellm ignores/overrides any chat_template_kwargs bolted on alongside `thinking` on
+// the /v1/messages route, so there is no fix on that path — this bucket mapping only matters
+// because dispatch now goes through /v1/chat/completions (see dispatchTranslated), which litellm
+// (and raw vLLM) both pass through to the backend untouched.
+function effortFromBudget(budgetTokens) {
+  const n = Number(budgetTokens) || 0;
+  if (n >= 20000) return 'xhigh';
+  if (n >= 6000) return 'medium';
+  return 'low';
+}
+
 function anthropicToOpenAI(body) {
   const messages = [];
   if (body.system) {
@@ -220,6 +235,9 @@ function anthropicToOpenAI(body) {
   if (body.tool_choice) {
     const tc = body.tool_choice;
     out.tool_choice = tc.type === 'any' ? 'required' : tc.type === 'tool' ? { type: 'function', function: { name: tc.name } } : 'auto';
+  }
+  if (body.thinking && body.thinking.type === 'enabled') {
+    out.chat_template_kwargs = { enable_thinking: true, reasoning_effort: effortFromBudget(body.thinking.budget_tokens) };
   }
   return out;
 }
@@ -505,7 +523,11 @@ function dispatchTranslated(pathname, anthropicBody, target, res) {
   }
   const openaiBody = anthropicToOpenAI(anthropicBody);
   const outBody = Buffer.from(JSON.stringify(openaiBody), 'utf8');
-  const path = target.pathname.replace(/\/$/, '') + '/chat/completions';
+  // Catalog server urls end in /v1 by wizard convention, but the bare LITELLM_UPSTREAM (now also a
+  // valid `target` here — see the server handler) does not; ensure the /v1 prefix either way rather
+  // than assuming it's already there.
+  const basePath = target.pathname.replace(/\/$/, '');
+  const path = (basePath.endsWith('/v1') ? basePath : `${basePath}/v1`) + '/chat/completions';
   const transport = target.protocol === 'https:' ? https : http;
   const defaultPort = target.protocol === 'https:' ? 443 : 80;
   let timedOut = false;
@@ -559,15 +581,23 @@ const server = http.createServer((req, res) => {
     const result = (req.method === 'POST') ? maybeRewrite(pathname, raw) : { buf: null, body: null, target: null, direct: true };
     const { buf, body, target, direct } = result;
 
-    if (target && !direct) {
-      dispatchTranslated(pathname, body, target, res);
+    // Translate-and-dispatch-to-/chat/completions is now the DEFAULT for /v1/messages traffic,
+    // not just explicit raw-vLLM catalog targets: litellm's own /v1/messages translation for
+    // thinking/reasoning_effort is confirmed broken for non-Anthropic-native backends (see
+    // effortFromBudget's comment above), while /v1/chat/completions passes chat_template_kwargs
+    // through untouched on both litellm and raw vLLM. Only a target explicitly marked
+    // `anthropic: true` (a real Anthropic-speaking gateway, not this stack's own litellm+vLLM) is
+    // still forwarded raw/untranslated below.
+    if (body && pathname.startsWith('/v1/messages') && !(target && direct)) {
+      dispatchTranslated(pathname, body, target || UPSTREAM, res);
       return;
     }
 
     const outBody = buf || raw;
     // target set -> dispatch there directly, joining paths the same way reasoning-normalizer.js
     // does for its OpenAI targets (targetPath above). Otherwise -> the default LITELLM_UPSTREAM,
-    // forwarding the request path unchanged as always (bootstrap / unresolved alias only).
+    // forwarding the request path unchanged as always (non-/v1/messages paths only, now that
+    // /v1/messages itself is handled above).
     const base = target || UPSTREAM;
     const path = target ? targetPath(target, req.url) : req.url;
 
